@@ -1,0 +1,80 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © shayanghad0
+
+//@version=6
+indicator(title="Triple SuperTrend", overlay=true, format=format.price, precision=2)
+
+// ------------------------------------------------------------------
+// INPUTS for three independent SuperTrends
+// ------------------------------------------------------------------
+// SuperTrend 1
+len1   = input.int(10, "Length 1", group="SuperTrend 1")
+mult1  = input.float(1.0, "Multiplier 1", step=0.1, group="SuperTrend 1")
+colUp1 = input.color(color.new(color.green, 0), "Up Color 1", group="SuperTrend 1")
+colDn1 = input.color(color.new(color.red, 0),   "Down Color 1", group="SuperTrend 1")
+
+// SuperTrend 2
+len2   = input.int(10,  "Length 2", group="SuperTrend 2")
+mult2  = input.float(2.0, "Multiplier 2", step=0.1, group="SuperTrend 2")
+colUp2 = input.color(color.new(color.lime, 0), "Up Color 2", group="SuperTrend 2")
+colDn2 = input.color(color.new(color.maroon, 0), "Down Color 2", group="SuperTrend 2")
+
+// SuperTrend 3
+len3   = input.int(10, "Length 3", group="SuperTrend 3")
+mult3  = input.float(3.0, "Multiplier 3", step=0.1, group="SuperTrend 3")
+colUp3 = input.color(color.new(color.blue, 0), "Up Color 3", group="SuperTrend 3")
+colDn3 = input.color(color.new(color.orange, 0), "Down Color 3", group="SuperTrend 3")
+
+// ------------------------------------------------------------------
+// HELPER FUNCTION: calculates SuperTrend values and direction
+// ------------------------------------------------------------------
+f_supertrend(length, mult) =>
+    atr = ta.atr(length)
+    hl2_ = hl2
+    upperBand = hl2_ + mult * atr
+    lowerBand = hl2_ - mult * atr
+
+    var float upper = na
+    var float lower = na
+    var int direction = 1   // 1 = up trend, -1 = down trend
+
+    upper := na(upper[1]) ? upperBand : (upperBand < upper[1] or close[1] > upper[1]) ? upperBand : upper[1]
+    lower := na(lower[1]) ? lowerBand : (lowerBand > lower[1] or close[1] < lower[1]) ? lowerBand : lower[1]
+
+    direction := na(direction[1]) ? 1 : (direction[1] == 1 and close < lower) ? -1 : (direction[1] == -1 and close > upper) ? 1 : direction[1]
+
+    float trend = direction == 1 ? lower : upper
+    [trend, direction]
+
+// ------------------------------------------------------------------
+// CALCULATE THE THREE SUPERTRENDS
+// ------------------------------------------------------------------
+[st1, dir1] = f_supertrend(len1, mult1)
+[st2, dir2] = f_supertrend(len2, mult2)
+[st3, dir3] = f_supertrend(len3, mult3)
+
+// ------------------------------------------------------------------
+// PLOT THE LINES
+// ------------------------------------------------------------------
+plot(st1, "ST 1", color=dir1 == 1 ? colUp1 : colDn1, linewidth=2)
+plot(st2, "ST 2", color=dir2 == 1 ? colUp2 : colDn2, linewidth=2)
+plot(st3, "ST 3", color=dir3 == 1 ? colUp3 : colDn3, linewidth=2)
+
+// ------------------------------------------------------------------
+// TABLE (displays "1. _ 2. _ 3. _" with trend and value)
+// ------------------------------------------------------------------
+var table infoTable = table.new(position.top_right, 3, 1, bgcolor=color.new(color.gray, 90), border_width=1)
+
+// Helper to get arrow and direction text
+f_dir_str(direction) =>
+    direction == 1 ? "▲ Up" : "▼ Down"
+
+// Refresh table on every bar
+if barstate.islast
+    txt1 = f_dir_str(dir1) + "  " + str.tostring(st1, format.mintick)
+    txt2 = f_dir_str(dir2) + "  " + str.tostring(st2, format.mintick)
+    txt3 = f_dir_str(dir3) + "  " + str.tostring(st3, format.mintick)
+
+    table.cell(infoTable, 0, 0, "1. " + txt1, text_color=dir1 == 1 ? colUp1 : colDn1)
+    table.cell(infoTable, 1, 0, "2. " + txt2, text_color=dir2 == 1 ? colUp2 : colDn2)
+    table.cell(infoTable, 2, 0, "3. " + txt3, text_color=dir3 == 1 ? colUp3 : colDn3)
